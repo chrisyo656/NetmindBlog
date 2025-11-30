@@ -1,39 +1,35 @@
 import { Dropdown, DropdownItem, DropdownMenu, DropdownTrigger } from "@heroui/dropdown"
 import { User } from "@heroui/user";
+import { useAuthStore } from "../stores/useAuthStore";
+import type { MenuUserProps } from "../types";
 
-interface InfUser {
-  name: string | undefined
-  userName: string | undefined
-  email: string | undefined
-  area: string | undefined
-}
-
-function MenuUser(infUser: InfUser) {
+function MenuUser({ profile }: MenuUserProps) {
+  const logOut = useAuthStore(state => state.logout);
 
   const handleLogOut = () => {
-    //logout()
+    logOut();
   }
 
   return (
     <div className="flex items-center gap-4">
-      <Dropdown 
-      placement="bottom-start"
+      <Dropdown
+        placement="bottom-start"
       >
         <DropdownTrigger>
           <User
             as="button"
-            avatarProps={{ isBordered: true, name: infUser.name, className: 'text-text1', }}
+            avatarProps={{ isBordered: true, name: profile.fullName, className: 'text-text1', }}
             className="text-text1"
             classNames={{ base: 'text-text1' }}
-            description={infUser.area}
-            name={infUser.name}
+            description={`@${profile.userName}`}
+            name={profile.fullName}
           />
         </DropdownTrigger>
         <DropdownMenu aria-label="User Actions" variant="flat">
           <DropdownItem key="profile" className=" flex" textValue='Información del Usuario'>
             <section className='flex flex-col grow gap-y-2'>
-              <p className="font-bold text-center">{infUser.userName}</p>
-              <p>{infUser.email}</p>
+              <p className="font-bold text-center">{profile.fullName}</p>
+              <p className="text-default-500">@{profile.userName}</p>
             </section>
 
           </DropdownItem>
@@ -46,3 +42,5 @@ function MenuUser(infUser: InfUser) {
   )
 }
 export default MenuUser
+
+

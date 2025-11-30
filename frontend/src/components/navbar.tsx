@@ -18,6 +18,7 @@ export default function TopBar() {
         }))
     );
 
+
     return (
         <Navbar maxWidth="full" onMenuOpenChange={setIsMenuOpen} isMenuOpen={isMenuOpen} >
             <NavbarContent className="flex sm:hidden basis-1/5 sm:basis-full " justify="start">
@@ -26,25 +27,25 @@ export default function TopBar() {
                     <Link aria-label="Volver al inicio" className="inline-flex items-center" to="/">
                         <picture>
                             <source media="(max-width: 640px)" srcSet={logo} />
-                            <img src={logo} width={100} alt="Fletes Logo" />
+                            <img src={logo} width={100} alt="React Logo" />
                         </picture>
                     </Link>
                 </NavbarBrand>
             </NavbarContent>
             <NavbarBrand className="hidden sm:flex">
                 <Link aria-label="Volver al inicio" className="inline-flex items-center gap-2 text-lg font-semibold" to="/">
-                    <img alt="Fletes Logo" className="h-10 w-10" src={logo} />
+                    <img alt="React Logo" className="h-10 w-10" src={logo} />
                     <span className="text-foreground">NetmindBlog</span>
                 </Link>
             </NavbarBrand>
             <NavbarContent className="hidden sm:flex basis-1/5 sm:basis-full" justify="end">
                 <NavbarItem className="hidden sm:flex gap-2">
-                    {isLogged ? (
+                    {isLogged && profile ? (
                         <>
-                            <Button as={Link} color="primary" to="/newPost" variant="flat">
+                            <Button as={Link} color="primary" to="/newPost" variant="bordered">
                                 Nuevo Post
                             </Button>
-                            <MenuUser userName={profile?.userName} name={profile?.fullName} email={undefined} area={undefined} />
+                            <MenuUser profile={profile} />
                         </>
                     ) : (
                         <div className="flex gap-2">

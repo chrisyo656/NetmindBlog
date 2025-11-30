@@ -1,50 +1,6 @@
-export type LoginPayload = {
-    userName: string;
-    password: string;
-};
-
-export type RegisterPayload = {
-    name: string;
-    lastName: string;
-    userName: string;
-    password: string;
-};
-
-export type AuthResponse = {
-    idUser: number;
-    userName: string;
-    fullName: string;
-    token: string;
-};
-
-type LoginServiceSuccess = {
-    access_token?: string;
-    token?: string;
-    fullName?: string;
-    idUser?: number;
-    userName?: string;
-    data?: {
-        token?: string;
-        fullName?: string;
-        idUser?: number;
-        userName?: string;
-    };
-};
-
-
-type RegisterResponse = AuthResponse & {
-    detail?: string;
-};
-
-export const BASE_API_URL: string = import.meta.env.VITE_API_URL ?? "";
-
-export const buildUrl = (path: string) => {
-    // Si no hay BASE_API_URL, usar ruta relativa para que Vite proxy funcione
-    if (!BASE_API_URL) {
-        return path.startsWith("/") ? path : `/${path}`;
-    }
-    return `${BASE_API_URL.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
-};
+import type { AuthResponse, LoginPayload, LoginServiceSuccess, RegisterPayload, RegisterResponse, UserProfile } from "../types";
+import { processDetail, readErrorDetail } from "../utils/detail";
+import { buildUrl } from "../utils/url";
 
 const mapAuthResponse = (response: LoginServiceSuccess): AuthResponse => ({
     idUser: response.idUser ?? response.data?.idUser ?? 0,
@@ -52,15 +8,6 @@ const mapAuthResponse = (response: LoginServiceSuccess): AuthResponse => ({
     fullName: response.fullName ?? response.data?.fullName ?? response.userName ?? "Usuario",
     token: response.access_token ?? response.token ?? response.data?.token ?? ""
 });
-
-export const readErrorDetail = async (response: Response): Promise<unknown> => {
-    try {
-        const data = await response.json();
-        return data?.message ?? data;
-    } catch {
-        return response.statusText || response.status;
-    }
-};
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
     if (!payload.userName || !payload.password) {
@@ -117,68 +64,55 @@ export async function register(payload: RegisterPayload): Promise<AuthResponse> 
     }
 }
 
-export async function verifySession(): Promise<AuthResponse | null> {
+export async function fetchCurrentUser(): Promise<UserProfile> {
+    const response = await fetch(buildUrl("/api/Auth/me"), {
+        method: "GET",
+        credentials: "include"
+    });
+
+    if (response.ok) {
+        return response.json() as Promise<UserProfile>;
+    }
+
+    const detail = await readErrorDetail(response);
+    const message = await processDetail(detail);
+    throw new Error(message);
+}
+
+export async function logoutUser(): Promise<void> {
+    const response = await fetch(buildUrl("/api/Auth/logout"), {
+        method: "POST",
+        credentials: "include"
+    });
+
+    if (!response.ok) {
+        const detail = await readErrorDetail(response);
+        const message = await processDetail(detail);
+        throw new Error(message);
+    }
+}
+
+export async function verifySession(): Promise<UserProfile | null> {
     try {
-        const response = await fetch(buildUrl("/api/Auth/verify"), {
+        const response = await fetch(buildUrl("/api/Auth/me"), {
             method: "GET",
-            headers: {
-                "Content-Type": "application/json"
-            },
             credentials: "include"
         });
 
         if (response.ok) {
-            const data = await response.json();
-            return mapAuthResponse(data);
+            return response.json() as Promise<UserProfile>;
         }
 
+        // 401 o 403 significa que no hay sesión activa, esto es normal
+        if (response.status === 401 || response.status === 403) {
+            return null;
+        }
+
+        // Otros errores también devuelven null silenciosamente
         return null;
     } catch {
+        // Errores de red u otros problemas
         return null;
     }
 }
 
-export async function processDetail(detail: unknown): Promise<string> {
-    if (typeof detail === "number") {
-        return mapDetailCode(detail);
-    }
-
-    if (typeof detail !== "string") {
-        return "Error desconocido";
-    }
-
-    if (detail === "token is expired") {
-        if (typeof window !== "undefined") {
-            window.location.href = "/login";
-        }
-        return "Token expirado";
-    }
-
-    const numeric = Number(detail);
-    if (!Number.isNaN(numeric)) {
-        return mapDetailCode(numeric);
-    }
-
-    if (detail.includes("[")) {
-        const inside = detail.split("[")[1]?.split("]")[0];
-        const code = Number(inside);
-        if (!Number.isNaN(code)) {
-            return mapDetailCode(code);
-        }
-    }
-
-    return detail;
-}
-
-const mapDetailCode = (code: number) => {
-    switch (code) {
-        case 23000:
-            return "Este elemento tiene relaciones existentes en la base de datos";
-        case 1062:
-            return "Este elemento ya existe en la base de datos";
-        case 1406:
-            return "Valor demasiado grande para la columna";
-        default:
-            return `Error (${code})`;
-    }
-};

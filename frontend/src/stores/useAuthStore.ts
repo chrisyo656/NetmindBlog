@@ -1,64 +1,18 @@
 import { create } from "zustand";
 import { toast } from "sonner";
-import { login as loginRequest, register as registerRequest, verifySession, type LoginPayload, type RegisterPayload } from "../services/auth";
-
-const AUTH_PROFILE_KEY = "netmindblog:profile";
-
-type StoredProfile = {
-    idUser: number;
-    userName: string;
-    fullName: string;
-};
-
-type AuthState = {
-    profile: StoredProfile | null;
-    isLogged: boolean;
-    initializing: boolean;
-    networkDown: boolean;
-    isLoggingIn: boolean;
-    isRegistering: boolean;
-    login: (payload: LoginPayload) => Promise<boolean>;
-    register: (payload: RegisterPayload) => Promise<boolean>;
-    logout: () => void;
-    hydrate: () => void;
-};
-
-const isBrowser = () => typeof window !== "undefined";
-
-const readStoredProfile = (): StoredProfile | null => {
-    if (!isBrowser()) {
-        return null;
-    }
-
-    try {
-        const profileRaw = window.localStorage.getItem(AUTH_PROFILE_KEY);
-        return profileRaw ? (JSON.parse(profileRaw) as StoredProfile) : null;
-    } catch {
-        return null;
-    }
-};
-
-const persistProfile = (profile: StoredProfile) => {
-    if (!isBrowser()) return;
-    window.localStorage.setItem(AUTH_PROFILE_KEY, JSON.stringify(profile));
-};
-
-const clearStoredProfile = () => {
-    if (!isBrowser()) return;
-    window.localStorage.removeItem(AUTH_PROFILE_KEY);
-};
-
-const isNetworkLike = (error: unknown) => {
-    if (error instanceof TypeError) return true;
-    const message = typeof error === "object" && error !== null ? String((error as { message?: string }).message ?? "") : "";
-    return /Failed to fetch|NetworkError|ECONNREFUSED|ERR_CONNECTION|ERR_NETWORK/i.test(message);
-};
-
-const initialProfile = readStoredProfile();
+import {
+    fetchCurrentUser,
+    login as loginRequest,
+    logoutUser,
+    register as registerRequest,
+    verifySession,
+} from "../services/auth";
+import type { AuthState } from "../types";
+import { isNetworkLike } from "../utils/network";
 
 export const useAuthStore = create<AuthState>(set => ({
-    profile: initialProfile,
-    isLogged: Boolean(initialProfile),
+    profile: null,
+    isLogged: false,
     initializing: true,
     networkDown: false,
     isLoggingIn: false,
@@ -67,18 +21,13 @@ export const useAuthStore = create<AuthState>(set => ({
     login: async payload => {
         set({ isLoggingIn: true, networkDown: false });
         try {
-            const response = await loginRequest(payload);
-            const profile = {
-                idUser: response.idUser,
-                userName: response.userName,
-                fullName: response.fullName
-            };
-            persistProfile(profile);
+            await loginRequest(payload);
+            const profile = await fetchCurrentUser();
             set({
                 profile,
                 isLogged: true
             });
-            toast.success(`Bienvenido de nuevo, ${response.fullName}`);
+            toast.success(`Bienvenido de nuevo, ${profile.fullName}`);
             return true;
         } catch (error) {
             if (isNetworkLike(error)) {
@@ -97,18 +46,13 @@ export const useAuthStore = create<AuthState>(set => ({
     register: async payload => {
         set({ isRegistering: true, networkDown: false });
         try {
-            const response = await registerRequest(payload);
-            const profile = {
-                idUser: response.idUser,
-                userName: response.userName,
-                fullName: response.fullName
-            };
-            persistProfile(profile);
+            await registerRequest(payload);
+            const profile = await fetchCurrentUser();
             set({
                 profile,
                 isLogged: true
             });
-            toast.success(`¡Bienvenido ${response.fullName}!`);
+            toast.success(`¡Bienvenido ${profile.fullName}!`);
             return true;
         } catch (error) {
             if (isNetworkLike(error)) {
@@ -124,48 +68,57 @@ export const useAuthStore = create<AuthState>(set => ({
         }
     },
 
-    logout: () => {
-        clearStoredProfile();
-        set({
-            profile: null,
-            isLogged: false,
-            networkDown: false
-        });
+    logout: async () => {
+        try {
+            await logoutUser();
+        } catch (error) {
+            if (!isNetworkLike(error)) {
+                toast.error(error instanceof Error ? error.message : "No se pudo cerrar sesión");
+            }
+        } finally {
+            set({
+                profile: null,
+                isLogged: false,
+                networkDown: false
+            });
+        }
     },
 
     hydrate: async () => {
-        const storedProfile = readStoredProfile();
+        try {
+            const session = await verifySession();
 
-        // Si hay perfil guardado, verificar la sesión con el servidor
-        if (storedProfile) {
-            try {
-                const sessionData = await verifySession();
-                if (sessionData) {
-                    // Sesión válida, actualizar el perfil por si cambió
-                    const profile = {
-                        idUser: sessionData.idUser,
-                        userName: sessionData.userName,
-                        fullName: sessionData.fullName
-                    };
-                    persistProfile(profile);
-                    set({
-                        profile,
-                        isLogged: true,
-                        initializing: false
-                    });
-                    return;
-                }
-            } catch (error) {
-                // Error al verificar, limpiar sesión
-                clearStoredProfile();
+            if (session) {
+                set({
+                    profile: {
+                        idUser: session.idUser,
+                        userName: session.userName,
+                        fullName: session.fullName
+                    },
+                    isLogged: true,
+                    initializing: false,
+                    networkDown: false
+                });
+            } else {
+                // No hay sesión activa, esto es normal
+                set({
+                    profile: null,
+                    isLogged: false,
+                    initializing: false,
+                    networkDown: false
+                });
+            }
+        } catch (error) {
+            // Solo errores de red inesperados llegan aquí
+            if (isNetworkLike(error)) {
+                set({ networkDown: true, initializing: false });
+            } else {
+                set({
+                    profile: null,
+                    isLogged: false,
+                    initializing: false
+                });
             }
         }
-
-        // No hay perfil o sesión inválida
-        set({
-            profile: null,
-            isLogged: false,
-            initializing: false
-        });
     }
 }));
