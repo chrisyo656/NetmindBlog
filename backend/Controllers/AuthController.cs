@@ -57,6 +57,20 @@ public class AuthController : ControllerBase
         return Ok(new { authenticated = true });
     }
 
+    [HttpPost("logout")]
+    [Authorize]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete(AuthCookieName, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict
+        });
+
+        return Ok(new { authenticated = false });
+    }
+
     [HttpGet("me")]
     [Authorize]
     public async Task<ActionResult<AuthResponseDTO>> GetCurrentUser()

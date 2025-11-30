@@ -45,7 +45,7 @@ public class DataDbContext : DbContext
         // Comment
         modelBuilder.Entity<Comment>(entity =>
         {
-            entity.HasKey(e => e.IdComment);
+            entity.HasKey(e => e.IdComments);
             entity.Property(e => e.Content).IsRequired();
 
             entity.HasOne(e => e.Post)

@@ -20,4 +20,5 @@ public class PostDTO
     public string AuthorUserName { get; set; } = string.Empty;
     public string AuthorFullName { get; set; } = string.Empty;
     public int CommentCount { get; set; }
+    public List<CommentDTO> RecentComments { get; set; } = new();
 }

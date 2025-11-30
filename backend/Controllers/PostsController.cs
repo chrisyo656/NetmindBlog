@@ -25,7 +25,6 @@ public class PostsController : ControllerBase
     {
         var posts = await _context.Posts
             .Include(p => p.User)
-            .Include(p => p.Comments)
             .OrderByDescending(p => p.CreatedAt)
             .Select(p => new PostDTO
             {
@@ -36,7 +35,19 @@ public class PostsController : ControllerBase
                 CreatedAt = p.CreatedAt,
                 AuthorUserName = p.User.UserName,
                 AuthorFullName = $"{p.User.Name} {p.User.LastName}",
-                CommentCount = p.Comments.Count
+                CommentCount = p.Comments.Count,
+                RecentComments = p.Comments
+                    .OrderByDescending(c => c.CommentedAt)
+                    .Take(2)
+                    .Select(c => new CommentDTO
+                    {
+                        IdComment = c.IdComments,
+                        Content = c.Content,
+                        CommentedAt = c.CommentedAt,
+                        AuthorUserName = c.User.UserName,
+                        AuthorFullName = $"{c.User.Name} {c.User.LastName}"
+                    })
+                    .ToList()
             })
             .ToListAsync();
 

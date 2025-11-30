@@ -29,7 +29,7 @@ public class CommentsController : ControllerBase
             .OrderByDescending(c => c.CommentedAt)
             .Select(c => new CommentDTO
             {
-                IdComment = c.IdComment,
+                IdComment = c.IdComments,
                 Content = c.Content,
                 CommentedAt = c.CommentedAt,
                 AuthorUserName = c.User.UserName,
@@ -70,7 +70,7 @@ public class CommentsController : ControllerBase
 
         var response = new CommentDTO
         {
-            IdComment = comment.IdComment,
+            IdComment = comment.IdComments,
             Content = comment.Content,
             CommentedAt = comment.CommentedAt,
             AuthorUserName = comment.User.UserName,

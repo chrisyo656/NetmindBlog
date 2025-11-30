@@ -1,7 +1,7 @@
 namespace NetmindBlog.API.Models;
 
 public class Comment {
-    public long IdComment { get; set; }
+    public long IdComments { get; set; }
     public long IdPost { get; set; }
     public long IdUser { get; set; }
     public string Content { get; set; } = "";
