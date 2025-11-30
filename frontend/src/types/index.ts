@@ -57,9 +57,6 @@ export type CreateCommentPayload = {
     content: string;
 };
 
-// Tipos legacy removidos: Post y PostComment (no usados)
-// StoredProfile removido - duplicado de UserProfile
-// InfUser removido - reemplazado por UserProfile con uso correcto en MenuUser
 
 export type CreatePostPayload = {
     title: string;
@@ -124,8 +121,6 @@ export type PasswordStrength = {
 export type PasswordIndicatorProps = {
     strength: PasswordStrength;
 };
-
-// PostFormState removido - reemplazado por PostFormFields + ImageUploadState
 
 export type CommentCardProps = {
     comment: Comment;
